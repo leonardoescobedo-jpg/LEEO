@@ -1,0 +1,355 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>La Partida Doble — Juego Avanzado (Standalone)</title>
+  <style>
+    :root{--bg:#f4f7fb;--card:#ffffff;--accent:#0f766e;--muted:#6b7280;--success:#10b981;--danger:#ef4444}
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Inter,system-ui,Arial,sans-serif;background:var(--bg);color:#0f172a}
+    .container{max-width:1100px;margin:24px auto;padding:18px}
+    header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+    h1{font-size:20px;margin:0}
+    .grid{display:grid;gap:16px}
+    .grid.cols-3{grid-template-columns:2fr 1fr}
+    .card{background:var(--card);padding:14px;border-radius:10px;box-shadow:0 6px 18px rgba(12,20,30,0.06)}
+    label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
+    input[type=text],input[type=number],select,textarea{width:100%;padding:8px;border:1px solid #e6eef5;border-radius:8px;font-size:14px}
+    button{cursor:pointer;border:0;padding:8px 12px;border-radius:8px;background:var(--accent);color:white}
+    button.secondary{background:#e6eef5;color:#0f172a}
+    .small{font-size:13px;color:var(--muted)}
+    .list{list-style:none;padding:0;margin:0}
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:8px;border-bottom:1px solid #eef3f7;text-align:left;font-size:14px}
+    .mcq button.option{display:block;width:100%;text-align:left;padding:10px;margin:6px 0;border-radius:8px;border:1px solid #e6eef5;background:white}
+    .mcq button.option:hover{background:#f7f9fb}
+    .flex{display:flex;gap:8px}
+    .badge{display:inline-block;padding:4px 8px;border-radius:999px;background:#eef7f5;color:#065f57;font-weight:600;font-size:12px}
+    .progress{height:10px;background:#eef3f7;border-radius:999px;overflow:hidden}
+    .progress > i{display:block;height:100%;background:linear-gradient(90deg,#06b6d4,#0ea5a4)}
+    .drag-item{padding:8px;border-radius:8px;border:1px dashed #cfe8e4;background:white;margin:8px 0}
+    .drop-target{min-height:80px;padding:8px;border-radius:8px;border:1px dashed #e6eef5;background:#fbfeff}
+    .feedback{padding:10px;border-radius:8px;margin-top:10px}
+    .feedback.ok{background:#ecfdf5;border:1px solid #bbf7d0;color:#065f57}
+    .feedback.bad{background:#fff1f2;border:1px solid #fecaca;color:#991b1b}
+    footer{margin-top:18px;text-align:center;color:var(--muted);font-size:13px}
+    @media(max-width:900px){.grid.cols-3{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div>
+        <h1>La Partida Doble — Juego Avanzado (página única)</h1>
+        <div class="small">Versión standalone — ranking, admin, arrastrar/soltar, libro mayor y temporizador</div>
+      </div>
+      <div class="flex">
+        <button id="btnAdmin">Panel Instructor</button>
+        <button id="btnReset" class="secondary">Reiniciar Ranking</button>
+      </div>
+    </header>
+
+    <main class="grid cols-3" style="margin-top:16px">
+      <section class="card">
+        <div>
+          <label>Nombre del jugador</label>
+          <input id="playerName" type="text" placeholder="Tu nombre aquí" />
+        </div>
+
+        <div style="margin-top:10px">
+          <label>Nivel</label>
+          <select id="levelSelect"></select>
+        </div>
+
+        <div class="flex" style="margin-top:12px">
+          <button id="startBtn">Comenzar partida</button>
+          <button id="clearBtn" class="secondary">Limpiar</button>
+        </div>
+
+        <hr style="margin:12px 0" />
+
+        <div class="small">Temporizador</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:6px">
+          <div class="badge" id="timerBadge">-- s</div>
+          <div style="flex:1;margin-left:10px"><div class="progress"><i id="timeBar" style="width:0%"></i></div></div>
+        </div>
+
+        <div style="margin-top:12px">
+          <div class="small">Progreso del nivel</div>
+          <div class="progress" style="margin-top:6px"><i id="progressLevel" style="width:0%"></i></div>
+        </div>
+
+        <div style="margin-top:12px">
+          <div class="small">Puntaje</div>
+          <div style="font-weight:700;font-size:20px" id="score">0</div>
+        </div>
+
+      </section>
+
+      <section class="card" style="grid-column:span 2">
+        <div id="questionArea">
+          <h3 id="questionText">Pulsa "Comenzar partida" para iniciar</h3>
+          <div id="interactionArea" style="margin-top:12px"></div>
+          <div id="feedbackArea"></div>
+        </div>
+
+        <div style="margin-top:12px">
+          <h4>Libro Mayor (asientos registrados)</h4>
+          <ol id="ledgerList" class="list" style="max-height:220px;overflow:auto;margin-top:8px"></ol>
+        </div>
+      </section>
+
+      <aside class="card">
+        <h4>Ranking</h4>
+        <table id="rankingTable" style="margin-top:8px">
+          <thead><tr><th>Pos</th><th>Nombre</th><th>Puntaje</th></tr></thead>
+          <tbody></tbody>
+        </table>
+
+        <div style="margin-top:12px;display:flex;gap:8px">
+          <button id="exportRanking" class="secondary">Exportar</button>
+          <button id="importRanking" class="secondary">Importar</button>
+        </div>
+
+        <hr style="margin:12px 0" />
+        <div class="small">Acciones</div>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button id="btnAbandon" class="secondary">Abandonar</button>
+          <button id="btnNext" class="secondary">Siguiente Nivel</button>
+        </div>
+      </aside>
+    </main>
+
+    <div id="adminPanel" class="card" style="margin-top:16px;display:none">
+      <h3>Panel Instructor — Banco de preguntas</h3>
+      <div style="display:flex;gap:12px;margin-top:8px;align-items:flex-start">
+        <div style="flex:1">
+          <label>Tipo</label>
+          <select id="adminTipo"><option value="mcq">Opción múltiple</option><option value="drag">Arrastrar y soltar</option></select>
+
+          <label style="margin-top:8px">Nivel</label>
+          <input id="adminNivel" type="number" value="1" />
+
+          <label style="margin-top:8px">Texto de la pregunta</label>
+          <textarea id="adminTexto" rows="3"></textarea>
+
+          <label style="margin-top:8px">Tiempo (segundos)</label>
+          <input id="adminTiempo" type="number" value="30" />
+
+          <div id="adminOpciones" style="margin-top:8px"></div>
+
+          <div style="margin-top:8px" class="flex">
+            <button id="adminAddOption" class="secondary">Añadir opción/elemento</button>
+            <button id="adminSave" style="background:#0ea5a4">Guardar pregunta</button>
+          </div>
+        </div>
+        <div style="width:360px">
+          <h4>Banco actual</h4>
+          <div id="bankList" style="max-height:320px;overflow:auto;margin-top:8px"></div>
+          <div style="margin-top:8px;display:flex;gap:8px">
+            <button id="exportBank" class="secondary">Exportar banco</button>
+            <button id="importBank" class="secondary">Importar banco</button>
+            <button id="btnCloseAdmin" class="secondary">Cerrar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      Hecho con ❤️ — copia el archivo y ábrelo en tu navegador. Si quieres, lo adapto para exportar resultados a CSV o para funcionar en red local.
+    </footer>
+  </div>
+
+  <script>
+    // --- Datos por defecto ---
+    const DEFAULT_QUESTIONS = [
+      { id:'q1', nivel:1, tipo:'mcq', texto:'Una empresa compra mobiliario al contado por $5,000. ¿Cuál es el asiento correcto?', tiempo:30,
+        opciones:[{id:'o1',texto:'Debe: Mobiliario $5,000 / Haber: Caja $5,000', correcto:true, explicacion:'Mobiliario aumenta (debe). Caja disminuye (haber).'},
+                  {id:'o2',texto:'Debe: Caja $5,000 / Haber: Mobiliario $5,000', correcto:false, explicacion:'Invertido: la empresa pagó, no recibió dinero.'},
+                  {id:'o3',texto:'Debe: Ventas $5,000 / Haber: Caja $5,000', correcto:false, explicacion:'Ventas no aplica en compra de mobiliario.'}]},
+      { id:'q2', nivel:1, tipo:'drag', texto:'Arrastra: Se paga la renta del local por $2,000 en efectivo.', tiempo:40,
+        elementos:[{id:'e1',texto:'Gastos de Renta $2,000', esDebe:true},{id:'e2',texto:'Caja $2,000', esDebe:false}], explicacion:'El gasto aumenta en Debe; la caja disminuye en Haber.' },
+      { id:'q3', nivel:2, tipo:'mcq', texto:'Se realiza una venta al contado por $3,000. ¿Asiento correcto?', tiempo:25,
+        opciones:[{id:'o1',texto:'Debe: Ventas $3,000 / Haber: Caja $3,000', correcto:false, explicacion:'Ventas se acredita (haber).'},
+                  {id:'o2',texto:'Debe: Caja $3,000 / Haber: Ventas $3,000', correcto:true, explicacion:'Caja aumenta (debe) y ventas se acredita (haber).'},
+                  {id:'o3',texto:'Debe: Clientes $3,000 / Haber: Ventas $3,000', correcto:false, explicacion:'No aplica: es venta al contado.'}]}
+    ];
+
+    // --- Storage keys ---
+    const KEY_BANK = 'pd_bank_v1';
+    const KEY_RANK = 'pd_rank_v1';
+
+    // --- State ---
+    let bank = load(KEY_BANK, DEFAULT_QUESTIONS);
+    let ranking = load(KEY_RANK, []);
+    let currentLevel = 1;
+    let player = '';
+    let qIndex = 0;
+    let score = 0;
+    let timer = null;
+    let timeLeft = 0;
+    let currentQuestions = [];
+    let ledger = [];
+
+    // --- Helpers ---
+    function save(key,val){ localStorage.setItem(key, JSON.stringify(val)); }
+    function load(key, fallback){ try{ const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback;}catch(e){return fallback} }
+
+    function init(){
+      // populate level selector
+      const levels = Array.from(new Set(bank.map(b=>b.nivel))).sort((a,b)=>a-b);
+      const sel = document.getElementById('levelSelect'); sel.innerHTML = '';
+      levels.forEach(l=>{ const opt = document.createElement('option'); opt.value=l; opt.textContent='Nivel '+l; sel.appendChild(opt);});
+      currentLevel = levels[0] || 1;
+      sel.value = currentLevel;
+      document.getElementById('btnAdmin').addEventListener('click', ()=>{ document.getElementById('adminPanel').style.display='block'; renderBank(); });
+      document.getElementById('btnCloseAdmin').addEventListener('click', ()=> document.getElementById('adminPanel').style.display='none');
+      document.getElementById('startBtn').addEventListener('click', startGame);
+      document.getElementById('clearBtn').addEventListener('click', ()=>{document.getElementById('playerName').value='';});
+      document.getElementById('levelSelect').addEventListener('change', e=> currentLevel = Number(e.target.value));
+      document.getElementById('adminAddOption').addEventListener('click', adminAddOption);
+      document.getElementById('adminSave').addEventListener('click', adminSaveQuestion);
+      document.getElementById('exportBank').addEventListener('click', ()=>download(JSON.stringify(bank, null,2),'preguntas_pd.json'));
+      document.getElementById('importBank').addEventListener('click', ()=>fileImport(file=>{ try{ const d=JSON.parse(file); if(Array.isArray(d)){ bank=d; save(KEY_BANK,bank); renderBank(); init(); alert('Banco importado'); }else alert('Formato inválido'); }catch(e){alert('JSON inválido')} }));
+      document.getElementById('exportRanking').addEventListener('click', ()=>download(JSON.stringify(ranking,null,2),'ranking_pd.json'));
+      document.getElementById('importRanking').addEventListener('click', ()=>fileImport(file=>{ try{ const d=JSON.parse(file); if(Array.isArray(d)){ ranking=d; save(KEY_RANK,ranking); renderRanking(); alert('Ranking importado'); }else alert('Formato inválido'); }catch(e){alert('JSON inválido')} }));
+      document.getElementById('btnReset').addEventListener('click', ()=>{ if(confirm('Borrar ranking?')){ ranking=[]; save(KEY_RANK,ranking); renderRanking(); } });
+      document.getElementById('btnAbandon').addEventListener('click', ()=>{ if(confirm('Abandonar partida?')) resetToStart(); });
+      document.getElementById('btnNext').addEventListener('click', ()=>{ currentLevel++; document.getElementById('levelSelect').value=currentLevel; resetToStart(); });
+
+      renderRanking(); renderBank(); updateScore(); renderLedger();
+    }
+
+    function startGame(){
+      player = document.getElementById('playerName').value.trim();
+      if(!player) return alert('Ingresa tu nombre');
+      qIndex=0; score=0; ledger=[]; updateScore();
+      currentQuestions = bank.filter(q=>q.nivel===currentLevel);
+      if(currentQuestions.length===0) return alert('No hay preguntas para este nivel');
+      shuffle(currentQuestions);
+      showQuestion();
+    }
+
+    function showQuestion(){
+      const q = currentQuestions[qIndex];
+      if(!q){ finishLevel(); return; }
+      document.getElementById('questionText').textContent = `Pregunta ${qIndex+1}/${currentQuestions.length}: ${q.texto}`;
+      document.getElementById('feedbackArea').innerHTML='';
+      const area = document.getElementById('interactionArea'); area.innerHTML='';
+      if(q.tipo==='mcq') renderMCQ(q, area);
+      else renderDrag(q, area);
+      startTimer(q.tiempo || 30, ()=>{ showFeedback(false,'Se acabó el tiempo', q.explicacion || 'No respondido a tiempo'); nextQuestion(); });
+      updateProgress();
+    }
+
+    function renderMCQ(q, host){
+      const wrap = document.createElement('div'); wrap.className='mcq';
+      q.opciones.forEach(opt=>{
+        const btn = document.createElement('button'); btn.className='option'; btn.textContent = opt.texto;
+        btn.addEventListener('click', ()=>{
+          stopTimer();
+          const ok = !!opt.correcto;
+          if(ok) score++;
+          ledger.push({pregunta:q.texto, asiento:opt.texto, ok, fecha:new Date().toISOString()}); saveLedger(); updateScore(); showFeedback(ok, ok? '¡Correcto!': 'Incorrecto', opt.explicacion); setTimeout(nextQuestion, 900);
+        });
+        wrap.appendChild(btn);
+      });
+      host.appendChild(wrap);
+    }
+
+    // Drag & Drop render
+    function renderDrag(q, host){
+      const container = document.createElement('div');
+      const left = document.createElement('div'); left.style.flex='1';
+      const right = document.createElement('div'); right.style.flex='1';
+      const list = document.createElement('div'); list.style.marginBottom='8px';
+      q.elementos.forEach(el=>{
+        const it = document.createElement('div'); it.className='drag-item'; it.draggable=true; it.id=el.id; it.textContent = el.texto;
+        it.addEventListener('dragstart', e=> e.dataTransfer.setData('text/plain', el.id));
+        list.appendChild(it);
+      });
+      const dbox1 = document.createElement('div'); dbox1.className='drop-target'; dbox1.dataset.target='debe';
+      const dbox2 = document.createElement('div'); dbox2.className='drop-target'; dbox2.dataset.target='haber';
+      [dbox1, dbox2].forEach(d=>{
+        d.addEventListener('dragover', e=> e.preventDefault());
+        d.addEventListener('drop', e=>{
+          e.preventDefault(); const id = e.dataTransfer.getData('text/plain'); const node = document.getElementById(id); if(node){ d.appendChild(node.cloneNode(true)); }
+        });
+      });
+      const label1 = document.createElement('div'); label1.textContent='Debe'; const label2 = document.createElement('div'); label2.textContent='Haber';
+      const sub = document.createElement('div'); sub.style.display='flex'; sub.style.gap='8px'; sub.appendChild(dbox1); sub.appendChild(dbox2);
+      container.appendChild(list); container.appendChild(label1); container.appendChild(dbox1); container.appendChild(label2); container.appendChild(dbox2);
+      const btnSend = document.createElement('button'); btnSend.textContent='Enviar'; btnSend.style.marginTop='8px'; btnSend.addEventListener('click', ()=>{
+        stopTimer();
+        // evaluate
+        const debeIds = Array.from(dbox1.querySelectorAll('.drag-item')).map(n=>n.id);
+        const haberIds = Array.from(dbox2.querySelectorAll('.drag-item')).map(n=>n.id);
+        const ok = q.elementos.every(el => (el.esDebe ? debeIds.includes(el.id) : haberIds.includes(el.id)));
+        if(ok) score++;
+        ledger.push({pregunta:q.texto, asiento:`debe:${JSON.stringify(debeIds)} haber:${JSON.stringify(haberIds)}`, ok, fecha:new Date().toISOString()}); saveLedger(); updateScore(); showFeedback(ok, ok? '¡Correcto!':'Incorrecto', q.explicacion || ''); setTimeout(nextQuestion,900);
+      });
+      host.appendChild(list); host.appendChild(sub); host.appendChild(btnSend);
+    }
+
+    function showFeedback(ok, title, explain){
+      const area = document.getElementById('feedbackArea'); area.innerHTML='';
+      const f = document.createElement('div'); f.className='feedback '+(ok? 'ok':'bad'); f.innerHTML = `<strong>${title}</strong><div class="small" style="margin-top:6px">${explain||''}</div>`;
+      area.appendChild(f);
+      renderLedger();
+    }
+
+    function nextQuestion(){ qIndex++; if(qIndex>=currentQuestions.length){ finishLevel(); } else showQuestion(); }
+
+    function finishLevel(){ stopTimer(); // guardar resultado
+      ranking.push({nombre:player,puntaje:score,nivel:currentLevel,fecha:new Date().toISOString()});
+      ranking.sort((a,b)=>b.puntaje-a.puntaje);
+      ranking = ranking.slice(0,50);
+      save(KEY_RANK); save(KEY_BANK);
+      save(KEY_RANK, ranking);
+      renderRanking();
+      document.getElementById('questionText').textContent = `¡Nivel terminado! ${player} obtuvo ${score} puntos.`;
+      document.getElementById('interactionArea').innerHTML='';
+    }
+
+    function updateScore(){ document.getElementById('score').textContent = score; }
+
+    function renderRanking(){ const body = document.querySelector('#rankingTable tbody'); body.innerHTML=''; ranking.slice(0,10).forEach((r,i)=>{ const tr = document.createElement('tr'); tr.innerHTML=`<td>${i+1}</td><td>${r.nombre}</td><td>${r.puntaje}</td>`; body.appendChild(tr); }); }
+
+    function renderLedger(){ const box = document.getElementById('ledgerList'); box.innerHTML=''; ledger.slice().reverse().forEach(l=>{ const li = document.createElement('li'); li.innerHTML = `<div style="font-weight:600">${l.pregunta}</div><div class="small">${l.asiento}</div><div class="small" style="color:#9ca3af">${new Date(l.fecha).toLocaleString()}</div>`; box.appendChild(li); }); }
+    function saveLedger(){ /* keep in memory only */ }
+
+    function startTimer(seconds, onEnd){ stopTimer(); timeLeft = seconds; document.getElementById('timerBadge').textContent = timeLeft + ' s'; updateTimeBar(); timer = setInterval(()=>{ timeLeft--; document.getElementById('timerBadge').textContent = timeLeft + ' s'; updateTimeBar(); if(timeLeft<=0){ stopTimer(); onEnd(); } }, 1000); }
+    function stopTimer(){ if(timer){ clearInterval(timer); timer=null; } }
+    function updateTimeBar(){ const q = currentQuestions[qIndex]; const total = q ? (q.tiempo||30) : 30; const pct = Math.max(0, ((total - timeLeft)/total)*100); document.getElementById('timeBar').style.width = pct + '%'; }
+    function updateProgress(){ const pct = Math.round((qIndex/currentQuestions.length)*100); document.getElementById('progressLevel').style.width = pct + '%'; }
+
+    function resetToStart(){ stopTimer(); document.getElementById('questionText').textContent='Pulsa "Comenzar partida" para iniciar'; document.getElementById('interactionArea').innerHTML=''; score=0; updateScore(); ledger=[]; renderLedger(); }
+
+    // --- Admin functions ---
+    function renderBank(){ const box = document.getElementById('bankList'); box.innerHTML=''; bank.forEach(q=>{ const d = document.createElement('div'); d.style.padding='8px'; d.style.borderBottom='1px solid #eef3f7'; d.innerHTML = `<div style="font-weight:700">Nivel ${q.nivel} • ${q.tipo.toUpperCase()}</div><div class="small">${q.texto}</div>`; box.appendChild(d); });
+      // levels selector
+      const levels = Array.from(new Set(bank.map(b=>b.nivel))).sort((a,b)=>a-b);
+      const sel = document.getElementById('levelSelect'); sel.innerHTML=''; levels.forEach(l=>{ const opt = document.createElement('option'); opt.value=l; opt.textContent='Nivel '+l; sel.appendChild(opt); });
+      if(!levels.includes(currentLevel)) currentLevel = levels[0]||1; sel.value=currentLevel;
+    }
+
+    function adminAddOption(){ const container = document.getElementById('adminOpciones'); const tipo = document.getElementById('adminTipo').value; const idx = Date.now(); if(tipo==='mcq'){ const div = document.createElement('div'); div.innerHTML = `<input placeholder="Texto" data-id="text" style="width:70%"/><label style="margin-left:6px"><input type=checkbox data-id="correct"/> Correcta</label>`; div.dataset.idx=idx; container.appendChild(div); } else { const div = document.createElement('div'); div.innerHTML = `<input placeholder="Texto del elemento" data-id="text" style="width:70%"/><label style="margin-left:6px">Destino: <select data-id="dest"><option value="debe">Debe</option><option value="haber">Haber</option></select></label>`; div.dataset.idx=idx; container.appendChild(div); } }
+
+    function adminSaveQuestion(){ const tipo = document.getElementById('adminTipo').value; const nivel = Number(document.getElementById('adminNivel').value || 1); const texto = document.getElementById('adminTexto').value.trim(); const tiempo = Number(document.getElementById('adminTiempo').value || 30);
+      if(!texto) return alert('Escribe el texto de la pregunta'); const items = Array.from(document.getElementById('adminOpciones').children);
+      const id = 'q'+Date.now(); if(tipo==='mcq'){ const opciones = items.map((it, i)=>{ const txt = it.querySelector('[data-id="text"]').value; const corr = !!it.querySelector('[data-id="correct"]').checked; return { id: 'o'+Date.now()+i, texto:txt, correcto:corr, explicacion:'' }; }).filter(o=>o.texto); if(opciones.length<2) return alert('Añade al menos 2 opciones'); bank.unshift({id,nivel,tipo,texto,tiempo,opciones}); }
+      else { const elementos = items.map((it,i)=>{ const txt = it.querySelector('[data-id="text"]').value; const dest = it.querySelector('[data-id="dest"]').value; return { id:'e'+Date.now()+i, texto:txt, esDebe: dest==='debe' };}).filter(e=>e.texto); if(elementos.length<1) return alert('Añade al menos 1 elemento'); bank.unshift({id,nivel,tipo,texto,tiempo,elementos,explicacion:''}); }
+      save(KEY_BANK, bank); document.getElementById('adminTexto').value=''; document.getElementById('adminOpciones').innerHTML=''; renderBank(); alert('Pregunta guardada'); }
+
+    // --- Utilities ---
+    function shuffle(arr){ for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; } }
+    function download(content, filename){ const blob = new Blob([content],{type:'application/json'}); const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=filename; a.click(); URL.revokeObjectURL(url); }
+    function fileImport(cb){ const input = document.createElement('input'); input.type='file'; input.accept='.json'; input.onchange = e=>{ const f = e.target.files[0]; if(!f) return; const reader = new FileReader(); reader.onload = ev=> cb(ev.target.result); reader.readAsText(f); }; input.click(); }
+
+    // --- Init ---
+    init();
+    renderRanking();
+  </script>
+</body>
+</html>
